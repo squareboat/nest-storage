@@ -1,7 +1,7 @@
 {
   "name": "@squareboat/nest-storage",
   "version": "0.0.1",
-  "description": "Multi disk multi driver storage manager for NestJS",
+  "description": "Multi disk multi driver storage manager for NestJS 💿💾",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "keywords": [
