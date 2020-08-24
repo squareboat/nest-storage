@@ -64,7 +64,12 @@ export class S3Storage implements StorageDriver {
    * @param path
    */
   async get(path: string): Promise<any> {
-    return;
+    const params = {
+      Bucket: this.config.bucket || '',
+      Key: path,
+    };
+
+    return await this.client.getObject(params).promise();
   }
 
   /**
@@ -73,7 +78,9 @@ export class S3Storage implements StorageDriver {
    * @param path
    */
   async exists(path: string): Promise<boolean> {
-    return true;
+    const meta = await this.getMetaData(path);
+    if (meta) { return true; }
+    return false;
   }
 
   /**
@@ -100,6 +107,8 @@ export class S3Storage implements StorageDriver {
    * @param path
    */
   async missing(path: string): Promise<boolean> {
+    const meta = await this.getMetaData(path);
+    if (!meta) { return true; }
     return false;
   }
 
@@ -118,6 +127,17 @@ export class S3Storage implements StorageDriver {
    * @param path
    */
   async delete(path: string): Promise<boolean> {
+    const params = {
+      Bucket: this.config.bucket || '',
+      Key: path,
+    };
+
+    try {
+      await this.client.deleteObject(params).promise();
+    } catch (err) {
+      return false;
+    }
+
     return true;
   }
 
