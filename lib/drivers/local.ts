@@ -1,4 +1,5 @@
 import { StorageDriver } from '../interfaces';
+import * as fs from 'fs';
 
 export class Local implements StorageDriver {
   private disk: string;
@@ -10,7 +11,18 @@ export class Local implements StorageDriver {
   }
 
   getMetaData(path: string): Promise<Record<string, any>> {
-    throw new Error('Method not implemented.');
+    return new Promise((resolve, reject) => {
+      if (!this.exists(path)) {
+        return reject('File path not found');
+      } else {
+        fs.open(path, 'r', (err, file_descriptor) => {
+          const metaData = fs.fstatSync(file_descriptor);
+          return resolve({
+            metaData,
+          });
+        });
+      }
+    });
   }
 
   /**
@@ -20,7 +32,9 @@ export class Local implements StorageDriver {
    * @param fileContent
    */
   async put(path: string, fileContent: any): Promise<any> {
-    return {};
+    return new Promise((resolve, reject) => {
+      return resolve();
+    });
   }
 
   /**
@@ -29,7 +43,10 @@ export class Local implements StorageDriver {
    * @param path
    */
   async get(path: string): Promise<any> {
-    return;
+    if (this.exists(path)) {
+      return fs.readFileSync(path);
+    }
+    return null;
   }
 
   /**
@@ -46,7 +63,7 @@ export class Local implements StorageDriver {
    * @param path
    */
   async exists(path: string): Promise<boolean> {
-    return true;
+    return fs.existsSync(path);
   }
 
   /**
@@ -55,7 +72,7 @@ export class Local implements StorageDriver {
    * @param path
    */
   async missing(path: string): Promise<boolean> {
-    return false;
+    return !this.exists(path);
   }
 
   /**
@@ -73,7 +90,11 @@ export class Local implements StorageDriver {
    * @param path
    */
   async delete(path: string): Promise<boolean> {
-    return true;
+    if (this.exists(path)) {
+      fs.unlinkSync(path);
+      return true;
+    }
+    return false;
   }
 
   /**
