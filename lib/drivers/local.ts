@@ -1,5 +1,6 @@
 import { StorageDriver } from '../interfaces';
 import * as fs from 'fs';
+import * as path from 'path';
 
 export class Local implements StorageDriver {
   private disk: string;
@@ -10,14 +11,17 @@ export class Local implements StorageDriver {
     this.config = config;
   }
 
-  getMetaData(path: string): Promise<Record<string, any>> {
+  getMetaData(filePath: string): Promise<Record<string, any>> {
     return new Promise((resolve, reject) => {
-      if (!this.exists(path)) {
-        return reject('File path not found');
+      if (!this.exists(filePath)) {
+        reject('File path not found');
       } else {
-        fs.open(path, 'r', (err, file_descriptor) => {
+        fs.open(filePath, 'r', (err, file_descriptor) => {
+          if (err) {
+            reject(`Can't read file`);
+          }
           const metaData = fs.fstatSync(file_descriptor);
-          return resolve({
+          resolve({
             metaData,
           });
         });
@@ -31,9 +35,25 @@ export class Local implements StorageDriver {
    * @param path
    * @param fileContent
    */
-  async put(path: string, fileContent: any): Promise<any> {
+  async put(filePath: string, fileContent: any): Promise<any> {
+    let dir_paths = [];
+    let final_path = filePath;
+    while (!fs.existsSync(filePath)) {
+      filePath = path.dirname(filePath);
+      dir_paths.push(filePath);
+    }
+    for (let path of dir_paths.reverse()) {
+      if (!fs.existsSync(path)) {
+        fs.mkdirSync(path);
+      }
+    }
     return new Promise((resolve, reject) => {
-      return resolve();
+      try {
+        fs.writeFileSync(final_path, Buffer.from(fileContent));
+        resolve();
+      } catch (e) {
+        reject(new Error('Failed to write file.'));
+      }
     });
   }
 
@@ -42,11 +62,14 @@ export class Local implements StorageDriver {
    *
    * @param path
    */
-  async get(path: string): Promise<any> {
-    if (this.exists(path)) {
-      return fs.readFileSync(path);
-    }
-    return null;
+  async get(filePath: string): Promise<any> {
+    return new Promise((resolve, reject) => {
+      if (this.exists(filePath)) {
+        resolve(fs.readFileSync(filePath));
+      } else {
+        reject(new Error('Invalid file path'));
+      }
+    });
   }
 
   /**
@@ -62,8 +85,8 @@ export class Local implements StorageDriver {
    *
    * @param path
    */
-  async exists(path: string): Promise<boolean> {
-    return fs.existsSync(path);
+  async exists(filePath: string): Promise<boolean> {
+    return fs.existsSync(filePath);
   }
 
   /**
@@ -71,8 +94,8 @@ export class Local implements StorageDriver {
    *
    * @param path
    */
-  async missing(path: string): Promise<boolean> {
-    return !this.exists(path);
+  async missing(filePath: string): Promise<boolean> {
+    return !this.exists(filePath);
   }
 
   /**
@@ -80,8 +103,8 @@ export class Local implements StorageDriver {
    *
    * @param path
    */
-  url(path: string): string {
-    return '';
+  url(filePath: string): string {
+    return `${this.config.base_url}/public/${filePath}`;
   }
 
   /**
@@ -89,12 +112,19 @@ export class Local implements StorageDriver {
    *
    * @param path
    */
-  async delete(path: string): Promise<boolean> {
-    if (this.exists(path)) {
-      fs.unlinkSync(path);
-      return true;
-    }
-    return false;
+  async delete(filePath: string): Promise<boolean> {
+    return new Promise((resolve, reject) => {
+      if (this.exists(filePath)) {
+        try {
+          fs.unlinkSync(filePath);
+          resolve(true);
+        } catch (e) {
+          reject(new Error('Unable to delete file'));
+        }
+      } else {
+        reject(false);
+      }
+    });
   }
 
   /**
