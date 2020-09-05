@@ -21,6 +21,7 @@ export class Local implements StorageDriver {
             reject(`Can't read file`);
           }
           const metaData = fs.fstatSync(file_descriptor);
+          fs.closeSync(file_descriptor);
           resolve({
             metaData,
           });
@@ -36,20 +37,20 @@ export class Local implements StorageDriver {
    * @param fileContent
    */
   async put(filePath: string, fileContent: any): Promise<any> {
-    let dir_paths = [];
-    let final_path = filePath;
+    let dirPaths = [];
+    let finalPath = filePath;
     while (!fs.existsSync(filePath)) {
       filePath = path.dirname(filePath);
-      dir_paths.push(filePath);
+      dirPaths.push(filePath);
     }
-    for (let path of dir_paths.reverse()) {
-      if (!fs.existsSync(path)) {
-        fs.mkdirSync(path);
+    for (let dirPath of dirPaths.reverse()) {
+      if (!this.exists(dirPath)) {
+        fs.mkdirSync(dirPath);
       }
     }
     return new Promise((resolve, reject) => {
       try {
-        fs.writeFileSync(final_path, Buffer.from(fileContent));
+        fs.writeFileSync(finalPath, Buffer.from(fileContent));
         resolve();
       } catch (e) {
         reject(new Error('Failed to write file.'));
@@ -76,7 +77,7 @@ export class Local implements StorageDriver {
    * Get Signed Urls
    * @param path
    */
-  async signedUrl(path: string, expire = 10): Promise<string> {
+  async signedUrl(filePath: string, expire = 10): Promise<string> {
     return '';
   }
 
@@ -104,7 +105,11 @@ export class Local implements StorageDriver {
    * @param path
    */
   url(filePath: string): string {
-    return `${this.config.base_url}/public/${filePath}`;
+    if (this.config.hasOwnProperty('baseUrl') && this.exists(filePath)) {
+      return `${this.config.baseUrl}/public/${filePath}`;
+    } else {
+      return '';
+    }
   }
 
   /**
