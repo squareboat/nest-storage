@@ -106,7 +106,7 @@ export class Local implements StorageDriver {
    */
   url(filePath: string): string {
     if (this.config.hasOwnProperty('baseUrl') && this.exists(filePath)) {
-      return `${this.config.baseUrl}/public/${filePath}`;
+      return path.join(this.config.baseUrl, 'public', filePath);
     } else {
       return '';
     }
