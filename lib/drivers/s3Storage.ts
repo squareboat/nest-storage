@@ -2,6 +2,7 @@ import { StorageDriver, DiskOptions, FileOptions } from '../interfaces';
 import { S3 } from 'aws-sdk';
 import { getMimeFromExtension } from '../helpers';
 import { HeadObjectRequest, PutObjectRequest } from 'aws-sdk/clients/s3';
+import { Storage } from '../storage';
 
 export class S3Storage implements StorageDriver {
   private readonly disk: string;
@@ -28,14 +29,14 @@ export class S3Storage implements StorageDriver {
   async put(
     path: string,
     fileContent: any,
-    options?: FileOptions,
+    options?: FileOptions
   ): Promise<any> {
     const { mimeType } = options || {};
     let params = {
       Bucket: this.config.bucket,
       Key: path,
       Body: fileContent,
-      ContentType: mimeType ? mimeType : getMimeFromExtension(path)
+      ContentType: mimeType ? mimeType : getMimeFromExtension(path),
     };
 
     return await this.client.upload(params as PutObjectRequest).promise();
@@ -53,7 +54,7 @@ export class S3Storage implements StorageDriver {
     };
     const signedUrl = await this.client.getSignedUrlPromise(
       'getObject',
-      params,
+      params
     );
     return signedUrl;
   }
@@ -79,7 +80,9 @@ export class S3Storage implements StorageDriver {
    */
   async exists(path: string): Promise<boolean> {
     const meta = await this.getMetaData(path);
-    if (meta) { return true; }
+    if (meta) {
+      return true;
+    }
     return false;
   }
 
@@ -94,7 +97,9 @@ export class S3Storage implements StorageDriver {
     };
 
     try {
-      const res = await this.client.headObject(params as HeadObjectRequest).promise();
+      const res = await this.client
+        .headObject(params as HeadObjectRequest)
+        .promise();
       return res;
     } catch (e) {
       return null;
@@ -108,7 +113,9 @@ export class S3Storage implements StorageDriver {
    */
   async missing(path: string): Promise<boolean> {
     const meta = await this.getMetaData(path);
-    if (!meta) { return true; }
+    if (!meta) {
+      return true;
+    }
     return false;
   }
 
@@ -153,5 +160,22 @@ export class S3Storage implements StorageDriver {
    */
   getConfig(): Record<string, any> {
     return this.config;
+  }
+
+  async copy(filePath: string, destinationDisk: string): Promise<boolean> {
+    const file = await this.get(filePath);
+    const disk = Storage.disk(destinationDisk);
+    const fileExists = await this.exists(filePath);
+    if (!fileExists) {
+      throw new Error('Invalid File Path');
+    }
+    await disk.put(filePath, file.Body);
+    const exists = await disk.exists(filePath);
+    return new Promise((resolve, reject) => {
+      if (exists) {
+        resolve(true);
+      }
+      reject(false);
+    });
   }
 }
