@@ -11,9 +11,10 @@ export class Local implements StorageDriver {
     this.config = config;
   }
 
-  getMetaData(filePath: string): Promise<Record<string, any>> {
+  async getMetaData(filePath: string): Promise<Record<string, any>> {
+    const exists = await this.exists(filePath);
     return new Promise((resolve, reject) => {
-      if (!this.exists(filePath)) {
+      if (!exists) {
         reject('File path not found');
       } else {
         fs.open(filePath, 'r', (err, file_descriptor) => {
@@ -44,7 +45,7 @@ export class Local implements StorageDriver {
       dirPaths.push(filePath);
     }
     for (let dirPath of dirPaths.reverse()) {
-      if (!this.exists(dirPath)) {
+      if (!(await this.exists(dirPath))) {
         fs.mkdirSync(dirPath);
       }
     }
@@ -64,8 +65,9 @@ export class Local implements StorageDriver {
    * @param path
    */
   async get(filePath: string): Promise<any> {
+    const exists = await this.exists(filePath);
     return new Promise((resolve, reject) => {
-      if (this.exists(filePath)) {
+      if (exists) {
         resolve(fs.readFileSync(filePath));
       } else {
         reject(new Error('Invalid file path'));
@@ -96,7 +98,7 @@ export class Local implements StorageDriver {
    * @param path
    */
   async missing(filePath: string): Promise<boolean> {
-    return !this.exists(filePath);
+    return !(await this.exists(filePath));
   }
 
   /**
@@ -104,9 +106,9 @@ export class Local implements StorageDriver {
    *
    * @param path
    */
-  url(filePath: string): string {
-    if (this.config.hasOwnProperty('baseUrl') && this.exists(filePath)) {
-      return `${this.config.baseUrl}/public/${filePath}`;
+  url(fileName: string) {
+    if (this.config.hasOwnProperty('baseUrl')) {
+      return path.join(this.config.baseUrl, 'public', fileName);
     } else {
       return '';
     }
@@ -118,8 +120,9 @@ export class Local implements StorageDriver {
    * @param path
    */
   async delete(filePath: string): Promise<boolean> {
+    const exists = await this.exists(filePath);
     return new Promise((resolve, reject) => {
-      if (this.exists(filePath)) {
+      if (exists) {
         try {
           fs.unlinkSync(filePath);
           resolve(true);
@@ -127,7 +130,7 @@ export class Local implements StorageDriver {
           reject(new Error('Unable to delete file'));
         }
       } else {
-        reject(false);
+        reject(new Error('Invalid file path'));
       }
     });
   }
