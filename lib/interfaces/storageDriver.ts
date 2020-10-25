@@ -64,4 +64,6 @@ export interface StorageDriver {
    * Get config of the driver's instance.
    */
   getConfig(): Record<string, any>;
+
+  copy(filePath: string, destinationDisk: string): Promise<boolean>;
 }

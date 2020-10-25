@@ -1,4 +1,5 @@
 import { StorageDriver } from '../interfaces';
+import { Storage } from '../storage';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -13,6 +14,7 @@ export class Local implements StorageDriver {
 
   async getMetaData(filePath: string): Promise<Record<string, any>> {
     const exists = await this.exists(filePath);
+    filePath = path.join(this.config.basePath, filePath);
     return new Promise((resolve, reject) => {
       if (!exists) {
         reject('File path not found');
@@ -39,13 +41,17 @@ export class Local implements StorageDriver {
    */
   async put(filePath: string, fileContent: any): Promise<any> {
     let dirPaths = [];
+    filePath = path.join(this.config.basePath, filePath);
     let finalPath = filePath;
+    if (!this.config.hasOwnProperty('basePath')) {
+      throw new Error('Base Path not provided');
+    }
     while (!fs.existsSync(filePath)) {
       filePath = path.dirname(filePath);
       dirPaths.push(filePath);
     }
     for (let dirPath of dirPaths.reverse()) {
-      if (!(await this.exists(dirPath))) {
+      if (!fs.existsSync(dirPath)) {
         fs.mkdirSync(dirPath);
       }
     }
@@ -66,6 +72,7 @@ export class Local implements StorageDriver {
    */
   async get(filePath: string): Promise<any> {
     const exists = await this.exists(filePath);
+    filePath = path.join(this.config.basePath, filePath);
     return new Promise((resolve, reject) => {
       if (exists) {
         resolve(fs.readFileSync(filePath));
@@ -89,6 +96,7 @@ export class Local implements StorageDriver {
    * @param path
    */
   async exists(filePath: string): Promise<boolean> {
+    filePath = path.join(this.config.basePath, filePath);
     return fs.existsSync(filePath);
   }
 
@@ -108,7 +116,8 @@ export class Local implements StorageDriver {
    */
   url(fileName: string) {
     if (this.config.hasOwnProperty('baseUrl')) {
-      return path.join(this.config.baseUrl, 'public', fileName);
+      const filePath = path.join('public', fileName);
+      return `${this.config.baseUrl}/${filePath}`;
     } else {
       return '';
     }
@@ -121,6 +130,7 @@ export class Local implements StorageDriver {
    */
   async delete(filePath: string): Promise<boolean> {
     const exists = await this.exists(filePath);
+    filePath = path.join(this.config.basePath, filePath);
     return new Promise((resolve, reject) => {
       if (exists) {
         try {
@@ -147,5 +157,22 @@ export class Local implements StorageDriver {
    */
   getConfig(): Record<string, any> {
     return this.config;
+  }
+
+  async copy(filePath: string, destinationDisk: string): Promise<boolean> {
+    const file = await this.get(filePath);
+    const disk = Storage.disk(destinationDisk);
+    const fileExists = await this.exists(filePath);
+    if (!fileExists) {
+      throw new Error('Invalid File Path');
+    }
+    await disk.put(filePath, file);
+    const exists = await disk.exists(filePath);
+    return new Promise((resolve, reject) => {
+      if (exists) {
+        resolve(true);
+      }
+      reject(false);
+    });
   }
 }
