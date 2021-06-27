@@ -2,7 +2,7 @@ import {
   StorageDriver,
   DiskOptions,
   FileOptions,
-  StorageDriver$Metadata,
+  StorageDriver$FileMetadataResponse,
   StorageDriver$PutFileResponse,
   StorageDriver$RenameFileResponse,
 } from "../interfaces";
@@ -92,7 +92,7 @@ export class S3Storage implements StorageDriver {
    * @param path
    */
   async exists(path: string): Promise<boolean> {
-    const meta = await this.getMetaData(path);
+    const meta = await this.meta(path);
     return Object.keys(meta).length > 0 ? true : false;
   }
 
@@ -100,7 +100,7 @@ export class S3Storage implements StorageDriver {
    * Get object's metadata
    * @param path
    */
-  async getMetaData(path: string): Promise<StorageDriver$Metadata> {
+  async meta(path: string): Promise<StorageDriver$FileMetadataResponse> {
     const params = {
       Bucket: this.config.bucket,
       Key: path,
@@ -127,7 +127,7 @@ export class S3Storage implements StorageDriver {
    * @param path
    */
   async missing(path: string): Promise<boolean> {
-    const meta = await this.getMetaData(path);
+    const meta = await this.meta(path);
     return Object.keys(meta).length === 0 ? true : false;
   }
 

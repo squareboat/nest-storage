@@ -1,4 +1,6 @@
 import {
+  StorageDriver$GetFileResponse,
+  StorageDriver$FileMetadataResponse,
   StorageDriver$PutFileResponse,
   StorageDriver$RenameFileResponse,
 } from ".";
@@ -17,7 +19,7 @@ export interface StorageDriver {
    *
    * @param path
    */
-  get(path: string): Promise<Buffer | null>;
+  get(path: string): Promise<StorageDriver$GetFileResponse>;
 
   /**
    * Check if file exists at the path.
@@ -51,7 +53,7 @@ export interface StorageDriver {
    * Get object's metadata
    * @param path
    */
-  getMetaData(path: string): Promise<Record<string, any> | null>;
+  meta(path: string): Promise<StorageDriver$FileMetadataResponse>;
 
   /**
    * Delete file at the given path.

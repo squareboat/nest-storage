@@ -1,7 +1,7 @@
 import {
   DiskOptions,
   StorageDriver,
-  StorageDriver$Metadata,
+  StorageDriver$FileMetadataResponse,
   StorageDriver$PutFileResponse,
   StorageDriver$RenameFileResponse,
 } from "../interfaces";
@@ -42,7 +42,7 @@ export class Local implements StorageDriver {
    * Get object's metadata
    * @param path
    */
-  async getMetaData(filePath: string): Promise<StorageDriver$Metadata> {
+  async meta(filePath: string): Promise<StorageDriver$FileMetadataResponse> {
     const path = join(this.config.basePath || "", filePath);
     const res = await fs.stat(path);
     return {

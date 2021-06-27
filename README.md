@@ -13,11 +13,10 @@ A mult-disk mult-driver filesystem manager for NestJS. 💾
       - [Recommended Way](#recommended-way)
   - [Driver Configuration](#driver-configuration)
       - [Amazon S3](#amazon-s3)
+      - [Local](#local)
   - [Disks](#disks)
   - [Usage](#usage)
-      - [Retrieving Files](#retrieving-files)
-      - [Storing Files](#storing-files)
-      - [Deleting Files](#deleting-files)
+      - [Methods](#methods)
   - [About Us](#about-us)
   - [License](#license)
 
@@ -129,11 +128,11 @@ The best part about this package is the simplicity that it provides while workin
 > Currently the package supports `AWS S3` filesystem. But we will be adding support of major Object Storage Solution Providers.
 
 **Drivers in Pipeline:**
-- Local Filesystem
 - Google Cloud Storage
 - Firebase
+- Digital Ocean
 
-#### Amazon S3
+### **Amazon S3**
 
 S3 is an higly scalable object storage solution provided by AWS. You can learn more about it [here](https://aws.amazon.com/s3/).
 
@@ -151,6 +150,23 @@ S3 is an higly scalable object storage solution provided by AWS. You can learn m
 }
 ```
 `s3` driver expects four parameters to interact with an S3 bucket. You can get the `AWS_KEY`, `AWS_SECRET` by creating an api role user using IAM. Learn more about it [here](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html#id_users_create_api).
+
+### **Local**
+
+You can use this package to manage the file objects stored locally on your system.
+
+**Driver Name:** `local`
+
+**Configuration:**
+```typescript
+{
+  driver: 'local',
+  basePath: '/home/ubuntu/var/www/your_project/storage', // fully qualified path of the folder
+  baseUrl: 'https://example.com',
+}
+```
+
+To serve the file objects from your project, have a look at [serve-static](https://docs.nestjs.com/recipes/serve-static) module by NestJS.
 
 ---
 
@@ -180,11 +196,16 @@ export default registerAs('filesystem', () => ({
       key: process.env.AWS_KEY,
       secret: process.env.AWS_SECRET,
       region: process.env.AWS_REGION,
+    },
+    reports: {
+      driver: 'local',
+      basePath: '/home/ubuntu/var/www/your_project/storage', // fully qualified path of the folder
+      baseUrl: 'https://example.com',
     }
   }})
 );
 ```
-Here we have created two different logical partitioning of `invoices` and `products` disk without trashing our code 😎.
+Here we have created two different logical partitioning of `invoices`, `products`, `reports` disk without trashing our code 😎.
 
 To switch between the different disks, it is as simple as:
 
@@ -206,24 +227,30 @@ Storage.disk('products') // uses the `products` disk
 ## Usage
 
 This package provides a single and uniform API for any type of operation across different drivers and disks.
+#### Methods
+- `put(path: string, fileContent: any): Promise<StorageDriver$PutFileResponse>`: Put the file at the specified path.
 
-APIs are defined as per the operations.
-
-#### Retrieving Files
-- `get(path: string): Promise<any>`: Get the file stored at the specified `path`
+- `get(path: string): Promise<Buffer | null>`: Get the file stored at the specified path.
  
-- `exists(path: string): Promise<boolean>`: Check if file exists at the specified `path`.
+- `exists(path: string): Promise<boolean>`: Check if file exists at the specified path.
 
-- `missing(path: string): Promise<boolean>`: Check if file is missing at the specified `path`.
+- `missing(path: string): Promise<boolean>`: Check if file is missing at the specified path.
 
-- `signedUrl(path: string, expire: number):Promise<string>`: Get a signed url to privately access the file stored at the specified `path`. Learn more about it [here](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/PrivateContent.html).
+- `url(path: string): string`: Get the url for the specified path.
 
-#### Storing Files
-- `put(path: string, fileContent: any): Promise<any>`: Put `fileContent` at the `path` specified.
+- `signedUrl(path: string, expire: number):Promise<string>`: Get a signed url to privately access the file stored at the specified `path`. Learn more about it [here](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/PrivateContent.html). Currently works for `s3` only.
 
-#### Deleting Files
-- `delete(path: string): Promise<boolean>`: Delete the file stored at specified `path`.
+- `meta(path: string): Promise<StorageDriver$FileMetadataResponse>`: Get file's metadata at the specified path.
 
+- `delete(path: string): Promise<boolean>`: Delete file at the specified path.
+
+- `copy(path: string, newPath: string): Promise<StorageDriver$RenameFileResponse>`: Copy file from path to newPath.
+
+- `move(path: string, newPath: string): Promise<StorageDriver$RenameFileResponse>`: Move the file from path to newPath.
+
+- `getClient()`: Get the underlying client of the disk. Currently works for `s3` only.
+
+- `getConfig()`: Get the configuration object of the disk.
 ----
 
 ## About Us
