@@ -1,3 +1,8 @@
+import {
+  StorageDriver$PutFileResponse,
+  StorageDriver$RenameFileResponse,
+} from ".";
+
 export interface StorageDriver {
   /**
    * Put file content to the path specified.
@@ -5,14 +10,14 @@ export interface StorageDriver {
    * @param path
    * @param fileContent
    */
-  put(path: string, fileContent: any): Promise<any>;
+  put(path: string, fileContent: any): Promise<StorageDriver$PutFileResponse>;
 
   /**
    * Get file stored at the specified path.
    *
    * @param path
    */
-  get(path: string): Promise<any>;
+  get(path: string): Promise<Buffer | null>;
 
   /**
    * Check if file exists at the path.
@@ -38,9 +43,9 @@ export interface StorageDriver {
   /**
    * Get Signed Urls
    * @param path
-   * @param expire
+   * @param expireInMinutes
    */
-  signedUrl(path: string, expire: number): Promise<string>;
+  signedUrl(path: string, expireInMinutes: number): string;
 
   /**
    * Get object's metadata
@@ -56,6 +61,46 @@ export interface StorageDriver {
   delete(path: string): Promise<boolean>;
 
   /**
+   * Copy file internally in the same disk
+   *
+   * @param path
+   * @param newPath
+   */
+  copy(
+    path: string,
+    newPath: string
+  ): Promise<StorageDriver$RenameFileResponse>;
+
+  /**
+   * Move file internally in the same disk
+   *
+   * @param path
+   * @param newPath
+   */
+  move(
+    path: string,
+    newPath: string
+  ): Promise<StorageDriver$RenameFileResponse>;
+
+  // /**
+  //  * Copy object from one path to the same path but on a different disk
+  //  *
+  //  * @param filePath
+  //  * @param destinationDisk
+  //  * @returns
+  //  */
+  // copyToDisk(filePath: string, destinationDisk: string): Promise<boolean>;
+
+  // /**
+  //  * Copy object from one path to the same path but on a different disk
+  //  *
+  //  * @param filePath
+  //  * @param destinationDisk
+  //  * @returns
+  //  */
+  // moveToDisk(filePath: string, destinationDisk: string): Promise<boolean>;
+
+  /**
    * Get instance of driver's client.
    */
   getClient(): any;
@@ -64,6 +109,4 @@ export interface StorageDriver {
    * Get config of the driver's instance.
    */
   getConfig(): Record<string, any>;
-
-  copy(filePath: string, destinationDisk: string): Promise<boolean>;
 }

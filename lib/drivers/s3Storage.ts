@@ -1,8 +1,14 @@
-import { StorageDriver, DiskOptions, FileOptions } from '../interfaces';
-import { S3 } from 'aws-sdk';
-import { getMimeFromExtension } from '../helpers';
-import { HeadObjectRequest, PutObjectRequest } from 'aws-sdk/clients/s3';
-import { Storage } from '../storage';
+import {
+  StorageDriver,
+  DiskOptions,
+  FileOptions,
+  StorageDriver$Metadata,
+  StorageDriver$PutFileResponse,
+  StorageDriver$RenameFileResponse,
+} from "../interfaces";
+import { S3, SharedIniFileCredentials } from "aws-sdk";
+import { getMimeFromExtension } from "../helpers";
+import { HeadObjectRequest, PutObjectRequest } from "aws-sdk/clients/s3";
 
 export class S3Storage implements StorageDriver {
   private readonly disk: string;
@@ -12,12 +18,18 @@ export class S3Storage implements StorageDriver {
   constructor(disk: string, config: DiskOptions) {
     this.disk = disk;
     this.config = config;
-    this.client = new S3({
-      accessKeyId: this.config.key,
-      secretAccessKey: this.config.secret,
-      signatureVersion: 'v4',
+    const options = {
+      signatureVersion: "v4",
       region: this.config.region,
-    });
+    } as Record<string, any>;
+
+    if (config.profile) {
+      options["credentials"] = new SharedIniFileCredentials({
+        profile: config.profile,
+      });
+    }
+
+    this.client = new S3(options);
   }
 
   /**
@@ -30,32 +42,32 @@ export class S3Storage implements StorageDriver {
     path: string,
     fileContent: any,
     options?: FileOptions
-  ): Promise<any> {
+  ): Promise<StorageDriver$PutFileResponse> {
     const { mimeType } = options || {};
     let params = {
       Bucket: this.config.bucket,
       Key: path,
       Body: fileContent,
       ContentType: mimeType ? mimeType : getMimeFromExtension(path),
-    };
+    } as PutObjectRequest;
 
-    return await this.client.upload(params as PutObjectRequest).promise();
+    const res = await this.client.upload(params).promise();
+    return { url: this.url(path), path };
   }
 
   /**
    * Get Signed Urls
    * @param path
    */
-  async signedUrl(path: string, expire = 20): Promise<string> {
+  signedUrl(path: string, expireInMinutes = 20): string {
     const params = {
       Bucket: this.config.bucket,
       Key: path,
-      Expires: 60 * expire,
+      Expires: 60 * expireInMinutes,
     };
-    const signedUrl = await this.client.getSignedUrlPromise(
-      'getObject',
-      params
-    );
+
+    const signedUrl = this.client.getSignedUrl("getObject", params);
+
     return signedUrl;
   }
 
@@ -64,13 +76,14 @@ export class S3Storage implements StorageDriver {
    *
    * @param path
    */
-  async get(path: string): Promise<any> {
-    const params = {
-      Bucket: this.config.bucket || '',
-      Key: path,
-    };
-
-    return await this.client.getObject(params).promise();
+  async get(path: string): Promise<Buffer | null> {
+    try {
+      const params = { Bucket: this.config.bucket || "", Key: path };
+      const res = await this.client.getObject(params).promise();
+      return res.Body as Buffer;
+    } catch (e) {
+      return null;
+    }
   }
 
   /**
@@ -80,17 +93,14 @@ export class S3Storage implements StorageDriver {
    */
   async exists(path: string): Promise<boolean> {
     const meta = await this.getMetaData(path);
-    if (meta) {
-      return true;
-    }
-    return false;
+    return Object.keys(meta).length > 0 ? true : false;
   }
 
   /**
    * Get object's metadata
    * @param path
    */
-  async getMetaData(path: string): Promise<Record<string, any> | null> {
+  async getMetaData(path: string): Promise<StorageDriver$Metadata> {
     const params = {
       Bucket: this.config.bucket,
       Key: path,
@@ -100,9 +110,14 @@ export class S3Storage implements StorageDriver {
       const res = await this.client
         .headObject(params as HeadObjectRequest)
         .promise();
-      return res;
+      return {
+        path: path,
+        contentType: res.ContentType,
+        contentLength: res.ContentLength,
+        lastModified: res.LastModified,
+      };
     } catch (e) {
-      return null;
+      return {};
     }
   }
 
@@ -113,10 +128,7 @@ export class S3Storage implements StorageDriver {
    */
   async missing(path: string): Promise<boolean> {
     const meta = await this.getMetaData(path);
-    if (!meta) {
-      return true;
-    }
-    return false;
+    return Object.keys(meta).length === 0 ? true : false;
   }
 
   /**
@@ -125,7 +137,8 @@ export class S3Storage implements StorageDriver {
    * @param path
    */
   url(path: string): string {
-    return '';
+    const url = this.signedUrl(path, 20).split("?")[0];
+    return url;
   }
 
   /**
@@ -134,18 +147,48 @@ export class S3Storage implements StorageDriver {
    * @param path
    */
   async delete(path: string): Promise<boolean> {
-    const params = {
-      Bucket: this.config.bucket || '',
-      Key: path,
-    };
-
+    const params = { Bucket: this.config.bucket || "", Key: path };
     try {
       await this.client.deleteObject(params).promise();
+      return true;
     } catch (err) {
       return false;
     }
+  }
 
-    return true;
+  /**
+   * Copy file internally in the same disk
+   *
+   * @param path
+   * @param newPath
+   */
+  async copy(
+    path: string,
+    newPath: string
+  ): Promise<StorageDriver$RenameFileResponse> {
+    this.client
+      .copyObject({
+        Bucket: this.config.bucket || "",
+        CopySource: this.config.bucket + "/" + path,
+        Key: newPath,
+      })
+      .promise();
+    return { path: newPath, url: this.url(newPath) };
+  }
+
+  /**
+   * Move file internally in the same disk
+   *
+   * @param path
+   * @param newPath
+   */
+  async move(
+    path: string,
+    newPath: string
+  ): Promise<StorageDriver$RenameFileResponse> {
+    await this.copy(path, newPath);
+    await this.delete(path);
+    return { path: newPath, url: this.url(newPath) };
   }
 
   /**
@@ -160,22 +203,5 @@ export class S3Storage implements StorageDriver {
    */
   getConfig(): Record<string, any> {
     return this.config;
-  }
-
-  async copy(filePath: string, destinationDisk: string): Promise<boolean> {
-    const file = await this.get(filePath);
-    const disk = Storage.disk(destinationDisk);
-    const fileExists = await this.exists(filePath);
-    if (!fileExists) {
-      throw new Error('Invalid File Path');
-    }
-    await disk.put(filePath, file.Body);
-    const exists = await disk.exists(filePath);
-    return new Promise((resolve, reject) => {
-      if (exists) {
-        resolve(true);
-      }
-      reject(false);
-    });
   }
 }

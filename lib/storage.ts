@@ -1,4 +1,4 @@
-import { StorageService } from './storage.service';
+import { StorageService } from './service';
 import { Injectable } from '@nestjs/common';
 
 @Injectable()

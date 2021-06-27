@@ -1,3 +1,3 @@
 export interface FileOptions {
-  mimeType: string;
+  mimeType?: string;
 }
