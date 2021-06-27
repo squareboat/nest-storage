@@ -1,17 +1,15 @@
-import { StorageDriver } from '../interfaces';
+import {
+  DiskOptions,
+  StorageDriver,
+  StorageDriver$FileMetadataResponse,
+  StorageDriver$PutFileResponse,
+  StorageDriver$RenameFileResponse,
+} from "../interfaces";
+import { join } from "path";
+import * as fs from "fs-extra";
 
 export class Local implements StorageDriver {
-  private disk: string;
-  private config: Record<string, any>;
-
-  constructor(disk: string, config: Record<string, any>) {
-    this.disk = disk;
-    this.config = config;
-  }
-
-  getMetaData(path: string): Promise<Record<string, any>> {
-    throw new Error('Method not implemented.');
-  }
+  constructor(private disk: string, private config: DiskOptions) {}
 
   /**
    * Put file content to the path specified.
@@ -19,8 +17,15 @@ export class Local implements StorageDriver {
    * @param path
    * @param fileContent
    */
-  async put(path: string, fileContent: any): Promise<any> {
-    return {};
+  async put(
+    filePath: string,
+    fileContent: any
+  ): Promise<StorageDriver$PutFileResponse> {
+    const res = await fs.outputFile(
+      join(this.config.basePath || "", filePath),
+      fileContent
+    );
+    return { path: join(this.config.basePath || "", filePath), url: "" };
   }
 
   /**
@@ -28,16 +33,31 @@ export class Local implements StorageDriver {
    *
    * @param path
    */
-  async get(path: string): Promise<any> {
-    return;
+  async get(filePath: string): Promise<Buffer> {
+    const res = await fs.readFile(join(this.config.basePath || "", filePath));
+    return res;
+  }
+
+  /**
+   * Get object's metadata
+   * @param path
+   */
+  async meta(filePath: string): Promise<StorageDriver$FileMetadataResponse> {
+    const path = join(this.config.basePath || "", filePath);
+    const res = await fs.stat(path);
+    return {
+      path,
+      contentLength: res.size,
+      lastModified: res.mtime,
+    };
   }
 
   /**
    * Get Signed Urls
    * @param path
    */
-  async signedUrl(path: string, expire = 10): Promise<string> {
-    return '';
+  signedUrl(filePath: string, expire = 10): string {
+    return "";
   }
 
   /**
@@ -45,8 +65,8 @@ export class Local implements StorageDriver {
    *
    * @param path
    */
-  async exists(path: string): Promise<boolean> {
-    return true;
+  async exists(filePath: string): Promise<boolean> {
+    return fs.pathExists(join(this.config.basePath || "", filePath));
   }
 
   /**
@@ -54,8 +74,8 @@ export class Local implements StorageDriver {
    *
    * @param path
    */
-  async missing(path: string): Promise<boolean> {
-    return false;
+  async missing(filePath: string): Promise<boolean> {
+    return !(await this.exists(filePath));
   }
 
   /**
@@ -63,8 +83,13 @@ export class Local implements StorageDriver {
    *
    * @param path
    */
-  url(path: string): string {
-    return '';
+  url(fileName: string) {
+    if (this.config.hasOwnProperty("baseUrl")) {
+      const filePath = join("public", fileName);
+      return `${this.config.basePath}/${filePath}`;
+    } else {
+      return "";
+    }
   }
 
   /**
@@ -72,8 +97,50 @@ export class Local implements StorageDriver {
    *
    * @param path
    */
-  async delete(path: string): Promise<boolean> {
+  async delete(filePath: string): Promise<boolean> {
+    try {
+      await fs.remove(join(this.config.basePath || "", filePath));
+    } catch (e) {}
     return true;
+  }
+
+  /**
+   * Copy file internally in the same disk
+   *
+   * @param path
+   * @param newPath
+   */
+  async copy(
+    path: string,
+    newPath: string
+  ): Promise<StorageDriver$RenameFileResponse> {
+    const res = await fs.copy(
+      join(this.config.basePath || "", path),
+      join(this.config.basePath || "", newPath),
+      { overwrite: true }
+    );
+    return {
+      path: join(this.config.basePath || "", newPath),
+      url: this.url(newPath),
+    };
+  }
+
+  /**
+   * Move file internally in the same disk
+   *
+   * @param path
+   * @param newPath
+   */
+  async move(
+    path: string,
+    newPath: string
+  ): Promise<StorageDriver$RenameFileResponse> {
+    await this.copy(path, newPath);
+    await this.delete(path);
+    return {
+      path: join(this.config.basePath || "", newPath),
+      url: this.url(newPath),
+    };
   }
 
   /**

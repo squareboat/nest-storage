@@ -13,5 +13,8 @@ export const extensions: { [key: string]: any } = {
 
 export const getMimeFromExtension = (fileName: string): string => {
   const extension: string = fileName.substr(fileName.indexOf('.') + 1);
-  return Object.keys(extensions).find(key => extensions[key] === extension) || '*/*';
+  return (
+    Object.keys(extensions).find((key) => extensions[key] === extension) ||
+    '*/*'
+  );
 };

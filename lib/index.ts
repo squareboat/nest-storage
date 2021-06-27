@@ -1,4 +1,4 @@
-export * from './storage.module';
+export * from './module';
 export * from './storage';
 export * from './drivers';
-export * from './interfaces'
+export * from './interfaces';
