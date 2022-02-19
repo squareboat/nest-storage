@@ -21,6 +21,8 @@ export class AliOssStorage implements StorageDriver {
       endpoint: this.config.basePath,
       accessKeyId: this.config.key,
       accessKeySecret: this.config.secret,
+      secure: this.config.secure || false,
+      timeout: this.config.timeout || 60000,
     } as OSS.Options;
     
     this.client = new OSS(options);
