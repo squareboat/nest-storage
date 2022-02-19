@@ -1,10 +1,11 @@
 import { StorageDriver } from './interfaces';
-import { Local, S3Storage } from './drivers';
+import { Local, S3Storage, AliOssStorage } from './drivers';
 
 export class DriverManager {
   private readonly driverMap: { [key: string]: any } = {
     local: Local,
     s3: S3Storage,
+    oss: AliOssStorage,
   };
 
   getDriver(disk: string, config: Record<string, any>): StorageDriver {
