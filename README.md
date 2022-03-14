@@ -32,7 +32,7 @@ This package provides a flexible filesystem abstraction. It contains drivers for
 npm i @squareboat/nest-storage
 
 #Using YARN
-yarn i @squareboat/nest-storage
+yarn add @squareboat/nest-storage
 ```
 ---
 ## Getting Started
