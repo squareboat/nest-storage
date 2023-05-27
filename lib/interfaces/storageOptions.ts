@@ -10,7 +10,7 @@ export interface DiskOptions {
 }
 
 export interface StorageOptions {
-  default?: string;
+  default: string;
   disks: Record<string, DiskOptions>;
 }
 
