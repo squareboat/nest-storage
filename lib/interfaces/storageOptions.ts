@@ -1,9 +1,10 @@
 import { ModuleMetadata, Type } from "@nestjs/common/interfaces";
 
 export interface DiskOptions {
-  driver: "s3" | "local";
+  driver: "s3" | "local" | "gcs";
   profile?: string;
   region?: string;
+  apiEndPoint?: string;
   bucket?: string;
   prefix?: string;
   basePath?: string;

@@ -1,11 +1,11 @@
-import { Module, DynamicModule, Provider, Type } from '@nestjs/common';
-import { StorageService } from './service';
+import { Module, DynamicModule, Provider, Type } from "@nestjs/common";
+import { StorageService } from "./service";
 import {
   StorageOptions,
   StorageAsyncOptions,
   StorageOptionsFactory,
-} from './interfaces';
-import { STORAGE_OPTIONS } from './constants';
+} from "./interfaces";
+import { STORAGE_OPTIONS } from "./constants";
 
 @Module({
   providers: [],
@@ -35,7 +35,7 @@ export class StorageModule {
   }
 
   private static createStorageOptionsProvider(
-    options: StorageAsyncOptions,
+    options: StorageAsyncOptions
   ): Provider {
     if (options.useFactory) {
       return {

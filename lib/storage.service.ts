@@ -1,8 +1,8 @@
-import { Injectable, Inject } from '@nestjs/common';
-import { StorageOptions } from './interfaces';
-import { StorageDriver } from './interfaces';
-import { DriverManager } from './driverManager';
-import { map } from './provider.map';
+import { Injectable, Inject } from "@nestjs/common";
+import { StorageOptions } from "./interfaces";
+import { StorageDriver } from "./interfaces";
+import { DriverManager } from "./driverManager";
+import { map } from "./provider.map";
 
 @Injectable()
 export class StorageService {
@@ -29,7 +29,7 @@ export class StorageService {
   static newDriver(disk: string): StorageDriver {
     return StorageService.driverManager.getDriver(
       disk,
-      StorageService.options.disks[disk],
+      StorageService.options.disks[disk]
     );
   }
 }
