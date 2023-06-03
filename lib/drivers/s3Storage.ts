@@ -46,13 +46,15 @@ export class S3Storage implements StorageDriver {
     const { mimeType } = options || {};
     let params = {
       Bucket: this.config.bucket,
-      Key: path,
+      Key: this.getPath(path),
       Body: fileContent,
-      ContentType: mimeType ? mimeType : getMimeFromExtension(path),
+      ContentType: mimeType
+        ? mimeType
+        : getMimeFromExtension(this.getPath(path)),
     } as PutObjectRequest;
 
-    const res = await this.client.upload(params).promise();
-    return { url: this.url(path), path };
+    await this.client.upload(params).promise();
+    return { url: this.url(this.getPath(path)), path: this.getPath(path) };
   }
 
   /**
@@ -62,7 +64,7 @@ export class S3Storage implements StorageDriver {
   signedUrl(path: string, expireInMinutes = 20): string {
     const params = {
       Bucket: this.config.bucket,
-      Key: path,
+      Key: this.getPath(path),
       Expires: 60 * expireInMinutes,
     };
 
@@ -78,7 +80,10 @@ export class S3Storage implements StorageDriver {
    */
   async get(path: string): Promise<Buffer | null> {
     try {
-      const params = { Bucket: this.config.bucket || "", Key: path };
+      const params = {
+        Bucket: this.config.bucket || "",
+        Key: this.getPath(path),
+      };
       const res = await this.client.getObject(params).promise();
       return res.Body as Buffer;
     } catch (e) {
@@ -92,7 +97,7 @@ export class S3Storage implements StorageDriver {
    * @param path
    */
   async exists(path: string): Promise<boolean> {
-    const meta = await this.meta(path);
+    const meta = await this.meta(this.getPath(path));
     return Object.keys(meta).length > 0 ? true : false;
   }
 
@@ -103,7 +108,7 @@ export class S3Storage implements StorageDriver {
   async meta(path: string): Promise<StorageDriver$FileMetadataResponse> {
     const params = {
       Bucket: this.config.bucket,
-      Key: path,
+      Key: this.getPath(path),
     };
 
     try {
@@ -111,7 +116,7 @@ export class S3Storage implements StorageDriver {
         .headObject(params as HeadObjectRequest)
         .promise();
       return {
-        path: path,
+        path: this.getPath(path),
         contentType: res.ContentType,
         contentLength: res.ContentLength,
         lastModified: res.LastModified,
@@ -127,7 +132,7 @@ export class S3Storage implements StorageDriver {
    * @param path
    */
   async missing(path: string): Promise<boolean> {
-    const meta = await this.meta(path);
+    const meta = await this.meta(this.getPath(path));
     return Object.keys(meta).length === 0 ? true : false;
   }
 
@@ -137,7 +142,7 @@ export class S3Storage implements StorageDriver {
    * @param path
    */
   url(path: string): string {
-    const url = this.signedUrl(path, 20).split("?")[0];
+    const url = this.signedUrl(this.getPath(path), 20).split("?")[0];
     return url;
   }
 
@@ -147,7 +152,10 @@ export class S3Storage implements StorageDriver {
    * @param path
    */
   async delete(path: string): Promise<boolean> {
-    const params = { Bucket: this.config.bucket || "", Key: path };
+    const params = {
+      Bucket: this.config.bucket || "",
+      Key: this.getPath(path),
+    };
     try {
       await this.client.deleteObject(params).promise();
       return true;
@@ -169,7 +177,7 @@ export class S3Storage implements StorageDriver {
     this.client
       .copyObject({
         Bucket: this.config.bucket || "",
-        CopySource: this.config.bucket + "/" + path,
+        CopySource: this.config.bucket + "/" + this.getPath(path),
         Key: newPath,
       })
       .promise();
@@ -186,8 +194,8 @@ export class S3Storage implements StorageDriver {
     path: string,
     newPath: string
   ): Promise<StorageDriver$RenameFileResponse> {
-    await this.copy(path, newPath);
-    await this.delete(path);
+    await this.copy(this.getPath(path), newPath);
+    await this.delete(this.getPath(path));
     return { path: newPath, url: this.url(newPath) };
   }
 
@@ -203,5 +211,12 @@ export class S3Storage implements StorageDriver {
    */
   getConfig(): Record<string, any> {
     return this.config;
+  }
+
+  /**
+   * Get path of the driver's instance.
+   */
+  getPath(path: string): string {
+    return this.config.basePath ? `${this.config.basePath}/${path}` : path;
   }
 }
