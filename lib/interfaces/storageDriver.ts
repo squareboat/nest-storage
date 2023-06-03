@@ -3,6 +3,7 @@ import {
   StorageDriver$FileMetadataResponse,
   StorageDriver$PutFileResponse,
   StorageDriver$RenameFileResponse,
+  FileOptions,
 } from ".";
 
 export interface StorageDriver {
@@ -12,7 +13,11 @@ export interface StorageDriver {
    * @param path
    * @param fileContent
    */
-  put(path: string, fileContent: any): Promise<StorageDriver$PutFileResponse>;
+  put(
+    path: string,
+    fileContent: any,
+    options?: FileOptions
+  ): Promise<StorageDriver$PutFileResponse>;
 
   /**
    * Get file stored at the specified path.
