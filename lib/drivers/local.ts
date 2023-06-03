@@ -1,5 +1,6 @@
 import {
   DiskOptions,
+  FileOptions,
   StorageDriver,
   StorageDriver$FileMetadataResponse,
   StorageDriver$PutFileResponse,
@@ -19,7 +20,8 @@ export class Local implements StorageDriver {
    */
   async put(
     filePath: string,
-    fileContent: any
+    fileContent: any,
+    options?: FileOptions
   ): Promise<StorageDriver$PutFileResponse> {
     const res = await fs.outputFile(
       join(this.config.basePath || "", filePath),
