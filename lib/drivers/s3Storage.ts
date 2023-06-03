@@ -49,6 +49,7 @@ export class S3Storage implements StorageDriver {
       Key: path,
       Body: fileContent,
       ContentType: mimeType ? mimeType : getMimeFromExtension(path),
+      ...(options?.s3Meta || {}),
     } as PutObjectRequest;
 
     const res = await this.client.upload(params).promise();
@@ -137,8 +138,7 @@ export class S3Storage implements StorageDriver {
    * @param path
    */
   url(path: string): string {
-    const url = this.signedUrl(path, 20).split("?")[0];
-    return url;
+    return this.signedUrl(path, 20).split("?")[0];
   }
 
   /**
