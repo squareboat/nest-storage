@@ -6,7 +6,7 @@ import {
   StorageDriver$PutFileResponse,
   StorageDriver$RenameFileResponse,
 } from "../interfaces";
-import { S3, SharedIniFileCredentials } from "aws-sdk";
+import { Credentials, S3, SharedIniFileCredentials } from "aws-sdk";
 import { getMimeFromExtension } from "../helpers";
 import { HeadObjectRequest, PutObjectRequest } from "aws-sdk/clients/s3";
 
@@ -26,6 +26,11 @@ export class S3Storage implements StorageDriver {
     if (config.profile) {
       options["credentials"] = new SharedIniFileCredentials({
         profile: config.profile,
+      });
+    } else if (config.accessKey && config.secretKey) {
+      options["credentials"] = new Credentials({
+        accessKeyId: config.accessKey,
+        secretAccessKey: config.secretKey,
       });
     }
 

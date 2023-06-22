@@ -7,6 +7,8 @@ export interface DiskOptions {
   bucket?: string;
   prefix?: string;
   basePath?: string;
+  accessKey?: string;
+  secretKey?: string;
   fetchRemoteCredentials?: boolean;
 }
 
