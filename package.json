@@ -1,6 +1,6 @@
 {
   "name": "@squareboat/nest-storage",
-  "version": "0.1.5",
+  "version": "0.1.6",
   "description": "Multi disk multi driver storage manager for NestJS 💿💾",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -34,18 +34,16 @@
     "@nestjs/common": "^9.3.9",
     "@nestjs/core": "^9.3.9",
     "@types/fs-extra": "^11.0.1",
-    "@types/mime-types": "^2.1.1",
     "@types/node": "^18.14.6",
     "reflect-metadata": "^0.1.13",
     "typescript": "^4.9.5"
   },
   "dependencies": {
     "aws-sdk": "^2.1390.0",
-    "fs-extra": "^11.1.1",
-    "mime-types": "^2.1.35"
+    "fs-extra": "^11.1.1"
   },
   "peerDependencies": {
-    "@nestjs/common": "^6.7.0 || ^7.0.0 || ^8.0.0 || ^9.0.0",
-    "@nestjs/core": "^6.7.0 || ^7.0.0 || ^8.0.0 || ^9.0.0"
+    "@nestjs/common": "^6.7.0 || ^7.0.0 || ^8.0.0 || ^9.0.0 || ^10.0.0",
+    "@nestjs/core": "^6.7.0 || ^7.0.0 || ^8.0.0 || ^9.0.0 || ^10.0.0"
   }
 }
