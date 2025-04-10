@@ -1,6 +1,6 @@
 {
   "name": "@squareboat/nest-storage",
-  "version": "0.2.0",
+  "version": "1.0.0",
   "description": "Multi disk multi driver storage manager for NestJS 💿💾",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
@@ -17,7 +17,7 @@
     "url": "https://github.com/squareboat/nestjs-storage/issues"
   },
   "homepage": "https://github.com/squareboat/nestjs-storage",
-  "author": "Vinayak Sarawagi <vinayaksarawagi25@gmail.com>",
+  "author": "Squareboat <hi@squareboat.com>",
   "license": "MIT",
   "scripts": {
     "build": "rm -rf dist && tsc -p tsconfig.json",
