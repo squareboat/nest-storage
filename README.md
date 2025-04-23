@@ -260,6 +260,6 @@ We are a bunch of dreamers, designers, and futurists. We are high on collaborati
 ----
 ## License
 
-The MIT License. Please see License File for more information. Copyright © 2020 SquareBoat.
+The MIT License. Please see License File for more information. Copyright © 2025 SquareBoat.
 
 Made with ❤️ by [Squareboat](https://squareboat.com)
