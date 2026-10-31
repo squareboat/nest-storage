@@ -35,7 +35,15 @@ npm i @squareboat/nest-storage
 yarn add @squareboat/nest-storage
 ```
 
-Requires Node.js 20.19+ or 22.12+ and NestJS 10, 11 or 12. S3 disks use AWS SDK for JavaScript v3. Upgrading from 0.1.x: `url()` and `signedUrl()` on S3 disks now return a Promise.
+Requires Node.js 20.19+ or 22.12+ and NestJS 10, 11 or 12. S3 disks use AWS SDK for JavaScript v3.
+
+**Upgrading from 0.1.x**
+- `url()` and `signedUrl()` on S3 disks return a Promise.
+- S3 disks need a `region` (or the `AWS_REGION` env var). AWS SDK v2 fell back to `us-east-1`; v3 throws "Region is missing".
+- `getClient()` returns the AWS SDK v3 `S3` client, so `.promise()` calls no longer work.
+- `registerAsync()` now passes `imports` to Nest. List modules there (for example `ConfigModule`), not providers such as `ConfigService`.
+- S3 `copy()` and `move()` put the target under `basePath`, and the returned `path` includes `basePath`, the same as `put()`.
+- Local `url()` returns `baseUrl` + the file path.
 
 ---
 ## Getting Started
@@ -112,11 +120,11 @@ export class AppModule { }
 ```
 
 **#3. Register Async StorageModule**
-Add following snippet to the `imports` array. `ConfigService` is importable from `@nestjs/config` module.
+Add following snippet to the `imports` array. `ConfigModule` and `ConfigService` are importable from `@nestjs/config` module.
 
 ```typescript
 StorageModule.registerAsync({
-  imports: [ConfigService],
+  imports: [ConfigModule],
   useFactory: (config: ConfigService) => {
     return config.get('filesystem')
   },
@@ -128,12 +136,11 @@ StorageModule.registerAsync({
 ## Driver Configuration
 The best part about this package is the simplicity that it provides while working across different storage providers. Every driver follow a simple and consistent API.
 
-> Currently the package supports `AWS S3` filesystem. But we will be adding support of major Object Storage Solution Providers.
+> Currently the package supports local disks, `AWS S3`, and S3-compatible services such as DigitalOcean Spaces, MinIO and R2 (through the `s3` driver's `endpoint` option). But we will be adding support of major Object Storage Solution Providers.
 
 **Drivers in Pipeline:**
 - Google Cloud Storage
 - Firebase
-- Digital Ocean
 
 ### **Amazon S3**
 
@@ -259,7 +266,7 @@ This package provides a single and uniform API for any type of operation across 
 
 - `missing(path: string): Promise<boolean>`: Check if file is missing at the specified path.
 
-- `url(path: string): string`: Get the url for the specified path.
+- `url(path: string): string | Promise<string>`: Get the url for the specified path. S3 disks return a Promise.
 
 - `signedUrl(path: string, expire: number):Promise<string>`: Get a signed url to privately access the file stored at the specified `path`. Learn more about it [here](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/PrivateContent.html). Currently works for `s3` only.
 

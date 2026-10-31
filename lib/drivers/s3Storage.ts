@@ -25,7 +25,13 @@ export class S3Storage implements StorageDriver {
     } as Record<string, any>;
 
     // S3-compatible services (DigitalOcean Spaces, MinIO, R2, ...)
-    if (config.endpoint) options["endpoint"] = config.endpoint;
+    if (config.endpoint) {
+      options["endpoint"] = config.endpoint;
+      // AWS SDK v3.729+ sends CRC32 checksums by default, which some
+      // S3-compatible services reject. Only send them when an API needs them.
+      options["requestChecksumCalculation"] = "WHEN_REQUIRED";
+      options["responseChecksumValidation"] = "WHEN_REQUIRED";
+    }
     if (config.forcePathStyle !== undefined) options["forcePathStyle"] = config.forcePathStyle;
 
     // `key` / `secret` are accepted too, as older docs used those names (#19)
