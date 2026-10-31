@@ -32,7 +32,7 @@ This package provides a flexible filesystem abstraction. It contains drivers for
 npm i @squareboat/nest-storage
 
 #Using YARN
-yarn i @squareboat/nest-storage
+yarn add @squareboat/nest-storage
 ```
 
 Requires Node.js 20+ and NestJS 10, 11 or 12. S3 disks use AWS SDK for JavaScript v3. Upgrading from 0.1.x: `url()` and `signedUrl()` on S3 disks now return a Promise.
@@ -58,8 +58,8 @@ import { StorageModule } from '@squareboat/nest-storage'
         docs: {
           driver: 's3',
           bucket: 'docs',
-          key: 'xxxxxx',
-          secret: 'xxxxxxx',
+          accessKey: 'xxxxxx',
+          secretKey: 'xxxxxxx',
           region: 'us-east-1'
         }
       }
@@ -83,8 +83,8 @@ export default registerAs('filesystem', () => ({
     docs: {
       driver: 's3',
       bucket: process.env.AWS_S3_DOCS_BUCKET,
-      key: process.env.AWS_KEY,
-      secret: process.env.AWS_SECRET,
+      accessKey: process.env.AWS_KEY,
+      secretKey: process.env.AWS_SECRET,
       region: process.env.AWS_REGION,
     }
   }})
@@ -147,12 +147,30 @@ S3 is an higly scalable object storage solution provided by AWS. You can learn m
 {
   driver: 's3',
   bucket: process.env.AWS_S3_DOCS_BUCKET,
-  key: process.env.AWS_KEY,
-  secret: process.env.AWS_SECRET,
+  accessKey: process.env.AWS_KEY,
+  secretKey: process.env.AWS_SECRET,
   region: process.env.AWS_REGION,
 }
 ```
-`s3` driver expects four parameters to interact with an S3 bucket. You can get the `AWS_KEY`, `AWS_SECRET` by creating an api role user using IAM. Learn more about it [here](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html#id_users_create_api).
+`s3` driver needs the bucket, region and credentials. You can get the `AWS_KEY`, `AWS_SECRET` by creating an api role user using IAM. Learn more about it [here](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html#id_users_create_api).
+
+- Instead of `accessKey` / `secretKey`, you can pass `profile` (from `~/.aws/credentials`), or leave all three out to use the AWS default credential chain (env vars, IAM role).
+- `key` / `secret` still work as older names for `accessKey` / `secretKey`.
+- `basePath` (optional) is a folder inside the bucket. Every path you pass is relative to it.
+
+**S3-compatible services** (DigitalOcean Spaces, MinIO, Cloudflare R2, ...): use the `s3` driver with an `endpoint`.
+
+```typescript
+{
+  driver: 's3',
+  bucket: 'my-space',
+  region: 'us-east-1', // DigitalOcean Spaces expects us-east-1 here
+  endpoint: 'https://nyc3.digitaloceanspaces.com',
+  accessKey: process.env.SPACES_KEY,
+  secretKey: process.env.SPACES_SECRET,
+  // forcePathStyle: true, // needed for MinIO and most self-hosted servers
+}
+```
 
 ### **Local**
 
@@ -168,6 +186,8 @@ You can use this package to manage the file objects stored locally on your syste
   baseUrl: 'https://example.com',
 }
 ```
+
+`baseUrl` (optional) is the public URL that serves `basePath`. When set, `put()`, `url()`, `copy()` and `move()` return `baseUrl` + the file's path, e.g. `https://example.com/invoices/1.pdf`. Without it they return an empty URL.
 
 To serve the file objects from your project, have a look at [serve-static](https://docs.nestjs.com/recipes/serve-static) module by NestJS.
 
@@ -189,15 +209,15 @@ export default registerAs('filesystem', () => ({
     invoices: { // `invoices` disk, will contain the invoices of all the orders passed so far
       driver: 's3',
       bucket: process.env.AWS_S3_DOCS_BUCKET,
-      key: process.env.AWS_KEY,
-      secret: process.env.AWS_SECRET,
+      accessKey: process.env.AWS_KEY,
+      secretKey: process.env.AWS_SECRET,
       region: process.env.AWS_REGION,
     },
     products: { // `products` disk, will contain photos of all the products
       driver: 's3',
       bucket: process.env.AWS_S3_PROFILE_PIC_BUCKET,
-      key: process.env.AWS_KEY,
-      secret: process.env.AWS_SECRET,
+      accessKey: process.env.AWS_KEY,
+      secretKey: process.env.AWS_SECRET,
       region: process.env.AWS_REGION,
     },
     reports: {
