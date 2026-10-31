@@ -1,4 +1,4 @@
-import { ModuleMetadata, Type } from "@nestjs/common/interfaces";
+import { ModuleMetadata, Type } from "@nestjs/common";
 
 export interface DiskOptions {
   driver: "s3" | "local";
@@ -9,6 +9,15 @@ export interface DiskOptions {
   basePath?: string;
   accessKey?: string;
   secretKey?: string;
+  /** @deprecated use `accessKey` */
+  key?: string;
+  /** @deprecated use `secretKey` */
+  secret?: string;
+  /** custom endpoint for S3-compatible services, e.g. https://nyc3.digitaloceanspaces.com */
+  endpoint?: string;
+  forcePathStyle?: boolean;
+  /** local driver: public URL that serves `basePath` */
+  baseUrl?: string;
   fetchRemoteCredentials?: boolean;
 }
 
@@ -23,8 +32,8 @@ export interface StorageOptionsFactory {
 
 export interface StorageAsyncOptions extends Pick<ModuleMetadata, "imports"> {
   name?: string;
-  useExisting?: Type<StorageOptions>;
-  useClass?: Type<StorageOptions>;
+  useExisting?: Type<StorageOptionsFactory>;
+  useClass?: Type<StorageOptionsFactory>;
   useFactory?: (...args: any[]) => Promise<StorageOptions> | StorageOptions;
   inject?: any[];
 }

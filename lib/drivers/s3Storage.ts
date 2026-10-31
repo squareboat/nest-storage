@@ -21,19 +21,26 @@ export class S3Storage implements StorageDriver {
     this.disk = disk;
     this.config = config;
     const options = {
-      signatureVersion: "v4",
       region: this.config.region,
     } as Record<string, any>;
 
+    // S3-compatible services (DigitalOcean Spaces, MinIO, R2, ...)
+    if (config.endpoint) {
+      options["endpoint"] = config.endpoint;
+      // AWS SDK v3.729+ sends CRC32 checksums by default, which some
+      // S3-compatible services reject. Only send them when an API needs them.
+      options["requestChecksumCalculation"] = "WHEN_REQUIRED";
+      options["responseChecksumValidation"] = "WHEN_REQUIRED";
+    }
+    if (config.forcePathStyle !== undefined) options["forcePathStyle"] = config.forcePathStyle;
+
+    // `key` / `secret` are accepted too, as older docs used those names (#19)
+    const accessKeyId = config.accessKey ?? config.key;
+    const secretAccessKey = config.secretKey ?? config.secret;
     if (config.profile) {
-      options["credentials"] = fromIni({
-      profile: config.profile,
-      });
-    } else if (config.accessKey && config.secretKey) {
-      options["credentials"] = {
-      accessKeyId: config.accessKey,
-      secretAccessKey: config.secretKey,
-      };
+      options["credentials"] = fromIni({ profile: config.profile });
+    } else if (accessKeyId && secretAccessKey) {
+      options["credentials"] = { accessKeyId, secretAccessKey };
     }
 
     this.client = new S3(options);
@@ -55,7 +62,7 @@ export class S3Storage implements StorageDriver {
       Bucket: this.config.bucket,
       Key: this.getPath(path),
       Body: fileContent,
-      ContentType: mimeType ? mimeType : getMimeFromExtension(path),
+      ContentType: mimeType || getMimeFromExtension(path) || undefined,
       ...(options?.s3Meta || {}),
     } as PutObjectCommandInput;
 
@@ -63,7 +70,7 @@ export class S3Storage implements StorageDriver {
       client: this.client,
       params,
     }).done();
-    return { url: await this.url(this.getPath(path)), path: this.getPath(path) };
+    return { url: await this.url(path), path: this.getPath(path) };
   }
 
   /**
@@ -96,7 +103,9 @@ export class S3Storage implements StorageDriver {
         Key: this.getPath(path),
       };
       const res = await this.client.getObject(params);
-      return res.Body as unknown as Buffer;
+      if (!res.Body) return null;
+      // SDK v3 returns a stream; read it so get() still resolves to a Buffer like 0.1.x did
+      return Buffer.from(await res.Body.transformToByteArray());
     } catch (e) {
       return null;
     }
@@ -108,8 +117,8 @@ export class S3Storage implements StorageDriver {
    * @param path
    */
   async exists(path: string): Promise<boolean> {
-    const meta = await this.meta(this.getPath(path));
-    return Object.keys(meta).length > 0 ? true : false;
+    const meta = await this.meta(path);
+    return Object.keys(meta).length > 0;
   }
 
   /**
@@ -142,8 +151,8 @@ export class S3Storage implements StorageDriver {
    * @param path
    */
   async missing(path: string): Promise<boolean> {
-    const meta = await this.meta(this.getPath(path));
-    return Object.keys(meta).length === 0 ? true : false;
+    const meta = await this.meta(path);
+    return Object.keys(meta).length === 0;
   }
 
   /**
@@ -152,7 +161,7 @@ export class S3Storage implements StorageDriver {
    * @param path
    */
   async url(path: string): Promise<string> {
-    const uri = await this.signedUrl(this.getPath(path), 20);
+    const uri = await this.signedUrl(path, 20);
     return uri.split("?")[0];
   }
 
@@ -184,14 +193,14 @@ export class S3Storage implements StorageDriver {
     path: string,
     newPath: string
   ): Promise<StorageDriver$RenameFileResponse> {
-    this.client
-      .copyObject({
-        Bucket: this.config.bucket || "",
-        CopySource: this.config.bucket + "/" + this.getPath(path),
-        Key: newPath,
-      });
-      const url = await this.url(newPath)
-      return { path: newPath, url };
+    // CopySource must be URL-encoded; keep the slashes between key segments
+    const source = this.getPath(path).split("/").map(encodeURIComponent).join("/");
+    await this.client.copyObject({
+      Bucket: this.config.bucket || "",
+      CopySource: `${this.config.bucket}/${source}`,
+      Key: this.getPath(newPath),
+    });
+    return { path: this.getPath(newPath), url: await this.url(newPath) };
   }
 
   /**
@@ -204,10 +213,9 @@ export class S3Storage implements StorageDriver {
     path: string,
     newPath: string
   ): Promise<StorageDriver$RenameFileResponse> {
-    await this.copy(this.getPath(path), newPath);
-    await this.delete(this.getPath(path));
-    const url = await this.url(newPath)
-    return { path: newPath, url };
+    const copied = await this.copy(path, newPath);
+    await this.delete(path);
+    return copied;
   }
 
   /**

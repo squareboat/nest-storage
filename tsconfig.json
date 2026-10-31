@@ -3,15 +3,17 @@
     "module": "commonjs",
     "declaration": true,
     "strict": true,
-    "removeComments": true,
+    "removeComments": false,
     "noLib": false,
     "emitDecoratorMetadata": true,
     "experimentalDecorators": true,
-    "target": "es6",
+    "useDefineForClassFields": false,
+    "target": "es2022",
     "sourceMap": false,
     "outDir": "./dist",
     "rootDir": "./lib",
-    "skipLibCheck": true
+    "skipLibCheck": true,
+    "types": ["node"]
   },
   "include": ["lib/**/*"],
   "exclude": ["node_modules", "**/*.spec.ts", "tests"]

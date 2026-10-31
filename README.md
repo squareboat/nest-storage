@@ -32,8 +32,19 @@ This package provides a flexible filesystem abstraction. It contains drivers for
 npm i @squareboat/nest-storage
 
 #Using YARN
-yarn i @squareboat/nest-storage
+yarn add @squareboat/nest-storage
 ```
+
+Requires Node.js 20.19+ or 22.12+ and NestJS 10, 11 or 12. S3 disks use AWS SDK for JavaScript v3.
+
+**Upgrading from 0.1.x**
+- `url()` and `signedUrl()` on S3 disks return a Promise.
+- S3 disks need a `region` (or the `AWS_REGION` env var). AWS SDK v2 fell back to `us-east-1`; v3 throws "Region is missing".
+- `getClient()` returns the AWS SDK v3 `S3` client, so `.promise()` calls no longer work.
+- `registerAsync()` now passes `imports` to Nest. List modules there (for example `ConfigModule`), not providers such as `ConfigService`.
+- S3 `copy()` and `move()` put the target under `basePath`, and the returned `path` includes `basePath`, the same as `put()`.
+- Local `url()` returns `baseUrl` + the file path.
+
 ---
 ## Getting Started
 
@@ -55,8 +66,8 @@ import { StorageModule } from '@squareboat/nest-storage'
         docs: {
           driver: 's3',
           bucket: 'docs',
-          key: 'xxxxxx',
-          secret: 'xxxxxxx',
+          accessKey: 'xxxxxx',
+          secretKey: 'xxxxxxx',
           region: 'us-east-1'
         }
       }
@@ -80,8 +91,8 @@ export default registerAs('filesystem', () => ({
     docs: {
       driver: 's3',
       bucket: process.env.AWS_S3_DOCS_BUCKET,
-      key: process.env.AWS_KEY,
-      secret: process.env.AWS_SECRET,
+      accessKey: process.env.AWS_KEY,
+      secretKey: process.env.AWS_SECRET,
       region: process.env.AWS_REGION,
     }
   }})
@@ -109,11 +120,11 @@ export class AppModule { }
 ```
 
 **#3. Register Async StorageModule**
-Add following snippet to the `imports` array. `ConfigService` is importable from `@nestjs/config` module.
+Add following snippet to the `imports` array. `ConfigModule` and `ConfigService` are importable from `@nestjs/config` module.
 
 ```typescript
 StorageModule.registerAsync({
-  imports: [ConfigService],
+  imports: [ConfigModule],
   useFactory: (config: ConfigService) => {
     return config.get('filesystem')
   },
@@ -125,12 +136,11 @@ StorageModule.registerAsync({
 ## Driver Configuration
 The best part about this package is the simplicity that it provides while working across different storage providers. Every driver follow a simple and consistent API.
 
-> Currently the package supports `AWS S3` filesystem. But we will be adding support of major Object Storage Solution Providers.
+> Currently the package supports local disks, `AWS S3`, and S3-compatible services such as DigitalOcean Spaces, MinIO and R2 (through the `s3` driver's `endpoint` option). But we will be adding support of major Object Storage Solution Providers.
 
 **Drivers in Pipeline:**
 - Google Cloud Storage
 - Firebase
-- Digital Ocean
 
 ### **Amazon S3**
 
@@ -144,12 +154,30 @@ S3 is an higly scalable object storage solution provided by AWS. You can learn m
 {
   driver: 's3',
   bucket: process.env.AWS_S3_DOCS_BUCKET,
-  key: process.env.AWS_KEY,
-  secret: process.env.AWS_SECRET,
+  accessKey: process.env.AWS_KEY,
+  secretKey: process.env.AWS_SECRET,
   region: process.env.AWS_REGION,
 }
 ```
-`s3` driver expects four parameters to interact with an S3 bucket. You can get the `AWS_KEY`, `AWS_SECRET` by creating an api role user using IAM. Learn more about it [here](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html#id_users_create_api).
+`s3` driver needs the bucket, region and credentials. You can get the `AWS_KEY`, `AWS_SECRET` by creating an api role user using IAM. Learn more about it [here](https://docs.aws.amazon.com/IAM/latest/UserGuide/id_users_create.html#id_users_create_api).
+
+- Instead of `accessKey` / `secretKey`, you can pass `profile` (from `~/.aws/credentials`), or leave all three out to use the AWS default credential chain (env vars, IAM role).
+- `key` / `secret` still work as older names for `accessKey` / `secretKey`.
+- `basePath` (optional) is a folder inside the bucket. Every path you pass is relative to it.
+
+**S3-compatible services** (DigitalOcean Spaces, MinIO, Cloudflare R2, ...): use the `s3` driver with an `endpoint`.
+
+```typescript
+{
+  driver: 's3',
+  bucket: 'my-space',
+  region: 'us-east-1', // DigitalOcean Spaces expects us-east-1 here
+  endpoint: 'https://nyc3.digitaloceanspaces.com',
+  accessKey: process.env.SPACES_KEY,
+  secretKey: process.env.SPACES_SECRET,
+  // forcePathStyle: true, // needed for MinIO and most self-hosted servers
+}
+```
 
 ### **Local**
 
@@ -165,6 +193,8 @@ You can use this package to manage the file objects stored locally on your syste
   baseUrl: 'https://example.com',
 }
 ```
+
+`baseUrl` (optional) is the public URL that serves `basePath`. When set, `put()`, `url()`, `copy()` and `move()` return `baseUrl` + the file's path, e.g. `https://example.com/invoices/1.pdf`. Without it they return an empty URL.
 
 To serve the file objects from your project, have a look at [serve-static](https://docs.nestjs.com/recipes/serve-static) module by NestJS.
 
@@ -186,15 +216,15 @@ export default registerAs('filesystem', () => ({
     invoices: { // `invoices` disk, will contain the invoices of all the orders passed so far
       driver: 's3',
       bucket: process.env.AWS_S3_DOCS_BUCKET,
-      key: process.env.AWS_KEY,
-      secret: process.env.AWS_SECRET,
+      accessKey: process.env.AWS_KEY,
+      secretKey: process.env.AWS_SECRET,
       region: process.env.AWS_REGION,
     },
     products: { // `products` disk, will contain photos of all the products
       driver: 's3',
       bucket: process.env.AWS_S3_PROFILE_PIC_BUCKET,
-      key: process.env.AWS_KEY,
-      secret: process.env.AWS_SECRET,
+      accessKey: process.env.AWS_KEY,
+      secretKey: process.env.AWS_SECRET,
       region: process.env.AWS_REGION,
     },
     reports: {
@@ -236,7 +266,7 @@ This package provides a single and uniform API for any type of operation across 
 
 - `missing(path: string): Promise<boolean>`: Check if file is missing at the specified path.
 
-- `url(path: string): string`: Get the url for the specified path.
+- `url(path: string): string | Promise<string>`: Get the url for the specified path. S3 disks return a Promise.
 
 - `signedUrl(path: string, expire: number):Promise<string>`: Get a signed url to privately access the file stored at the specified `path`. Learn more about it [here](https://docs.aws.amazon.com/AmazonCloudFront/latest/DeveloperGuide/PrivateContent.html). Currently works for `s3` only.
 

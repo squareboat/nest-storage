@@ -30,7 +30,12 @@ export class StorageModule {
     return {
       global: true,
       module: StorageModule,
-      providers: [this.createStorageOptionsProvider(options), StorageService],
+      imports: options.imports || [],
+      providers: [
+        this.createStorageOptionsProvider(options),
+        ...(options.useClass ? [{ provide: options.useClass, useClass: options.useClass }] : []),
+        StorageService,
+      ],
     };
   }
 
@@ -46,7 +51,7 @@ export class StorageModule {
     }
 
     const inject = [
-      (options.useClass || options.useExisting) as Type<StorageOptions>,
+      (options.useClass || options.useExisting) as Type<StorageOptionsFactory>,
     ];
     return {
       provide: STORAGE_OPTIONS,

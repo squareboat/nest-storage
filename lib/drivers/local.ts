@@ -27,7 +27,7 @@ export class Local implements StorageDriver {
       join(this.config.basePath || "", filePath),
       fileContent
     );
-    return { path: join(this.config.basePath || "", filePath), url: "" };
+    return { path: join(this.config.basePath || "", filePath), url: this.url(filePath) };
   }
 
   /**
@@ -85,13 +85,17 @@ export class Local implements StorageDriver {
    *
    * @param path
    */
-  url(fileName: string) {
-    if (this.config.hasOwnProperty("baseUrl")) {
-      const filePath = join("public", fileName);
-      return `${this.config.basePath}/${filePath}`;
-    } else {
-      return "";
-    }
+  url(fileName: string): string {
+    // baseUrl is the public URL that serves basePath (based on #23 and #24)
+    if (!this.config.baseUrl) return "";
+    const base = this.config.baseUrl.replace(/\/+$/, "");
+    const filePath = fileName
+      .replace(/\\/g, "/")
+      .replace(/^\/+/, "")
+      .split("/")
+      .map(encodeURIComponent)
+      .join("/");
+    return `${base}/${filePath}`;
   }
 
   /**
