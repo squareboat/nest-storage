@@ -34,6 +34,9 @@ npm i @squareboat/nest-storage
 #Using YARN
 yarn i @squareboat/nest-storage
 ```
+
+Requires Node.js 20+ and NestJS 10, 11 or 12. S3 disks use AWS SDK for JavaScript v3. Upgrading from 0.1.x: `url()` and `signedUrl()` on S3 disks now return a Promise.
+
 ---
 ## Getting Started
 

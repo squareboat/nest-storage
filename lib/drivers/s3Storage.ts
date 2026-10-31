@@ -96,7 +96,9 @@ export class S3Storage implements StorageDriver {
         Key: this.getPath(path),
       };
       const res = await this.client.getObject(params);
-      return res.Body as unknown as Buffer;
+      if (!res.Body) return null;
+      // SDK v3 returns a stream; read it so get() still resolves to a Buffer like 0.1.x did
+      return Buffer.from(await res.Body.transformToByteArray());
     } catch (e) {
       return null;
     }
